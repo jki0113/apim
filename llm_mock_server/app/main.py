@@ -1,48 +1,42 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import redis.asyncio as redis
+import sys
+import os
+
+# --- 프로젝트 루트의 config.py를 찾기 위한 경로 설정 ---
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(project_root)
+from config import REDIS_HOST, REDIS_PORT, LLM_REDIS_DB
 
 from llm_mock_server.app.core.logger import get_logger
-logger = get_logger(__name__)
 from llm_mock_server.app.api.v1.router import api_router
-from config import REDIS_HOST, REDIS_PORT, LLM_REDIS_DB, RPM_LIMIT, TPM_LIMIT, RPD_LIMIT, TPD_LIMIT
-from llm_mock_server.app.middleware.rate_limiting import RateLimitingMiddleware
-from llm_mock_server.app.services.rate_limiter import RateLimiter
+
+logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("starting up...")
-
-    # Redis 클라이언트 생성
+    # Redis는 여전히 다른 목적으로 사용할 수 있으므로 연결은 유지합니다.
     redis_client = redis.from_url(
         f"redis://{REDIS_HOST}:{REDIS_PORT}/{LLM_REDIS_DB}",
         encoding="utf-8",
         decode_responses=True
     )
+    # Rate Limit과 무관하게 DB 초기화는 유지
     await redis_client.flushdb()
     app.state.redis = redis_client
     logger.info("redis client initialized")
-
-    rate_limiter_instance = RateLimiter(
-        redis_client=redis_client,
-        rpm_limit=RPM_LIMIT,
-        tpm_limit=TPM_LIMIT,
-        rpd_limit=RPD_LIMIT,
-        tpd_limit=TPD_LIMIT,
-    )
-    app.state.rate_limiter = rate_limiter_instance
-    logger.info("rate limiter initialized")
-
     yield
-
     logger.info("shutting down...")
     await app.state.redis.close()
 
 app = FastAPI(
     title="Mock LLM Server",
-    description="테스트용 LLM 서버",
+    description="테스트용 LLM 서버 (Rate Limit 없음)",
     version="1.0.0",
-    lifespan=lifespan  # 2. 생성된 앱에 lifespan 핸들러를 등록합니다.
+    lifespan=lifespan
 )
-app.add_middleware(RateLimitingMiddleware)
+
+# RateLimitingMiddleware를 제거했습니다.
 app.include_router(api_router, prefix="/v1")

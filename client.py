@@ -15,6 +15,10 @@ logging.basicConfig(
 DEFAULT_API_URL = "http://127.0.0.1:8001/v1/chat/completions"
 DEFAULT_API_KEY = "DUMMY_KEY"
 
+# --- 추가된 부분: 재시도 설정 ---
+MAX_RETRIES = 5
+RETRY_COOLDOWN_SECONDS = 10
+
 async def _send_single_request(
     session: aiohttp.ClientSession, 
     task_id: int, 
@@ -24,16 +28,31 @@ async def _send_single_request(
     """단일 요청을 브로커 서버에 비동기적으로 보내는 내부 헬퍼 함수."""
     payload = {"messages": [{"role": "user", "content": prompt}]}
     
-    try:
-        async with session.post(api_url, json=payload, headers={"Authorization": f"Bearer {DEFAULT_API_KEY}"}) as response:
-            result = await response.json()
-            # --- 변경된 부분: print 대신 logging을 사용합니다. ---
-            if response.status != 200:
-                logging.warning(f"Task #{task_id}: Received non-200 status: {response.status} - Response: {result}")
-            return task_id, result
-    except Exception as e:
-        logging.error(f"Task #{task_id}: FAILED with an unexpected error: {e}")
-        return task_id, {"error": str(e)}
+    # --- 수정된 부분: 재시도 로직 추가 ---
+    for attempt in range(MAX_RETRIES):
+        try:
+            async with session.post(api_url, json=payload, headers={"Authorization": f"Bearer {DEFAULT_API_KEY}"}) as response:
+                # 성공 (2xx) 또는 클라이언트 오류 (4xx)는 즉시 반환 (재시도 안 함)
+                if response.status < 500:
+                    result = await response.json()
+                    if response.status != 200:
+                        logging.warning(f"Task #{task_id}: Received non-200 status: {response.status} - Response: {result}")
+                    return task_id, result
+
+                # 서버 오류 (5xx)인 경우 재시도
+                logging.warning(f"Task #{task_id}: Attempt {attempt + 1}/{MAX_RETRIES} failed with server error: {response.status}. Retrying in {RETRY_COOLDOWN_SECONDS}s...")
+
+        except Exception as e:
+            # 타임아웃 등 aiohttp 관련 예외 발생 시 재시도
+            logging.error(f"Task #{task_id}: Attempt {attempt + 1}/{MAX_RETRIES} failed with client error: {e}. Retrying in {RETRY_COOLDOWN_SECONDS}s...")
+        
+        # 마지막 시도가 아니면 재시도 전 대기
+        if attempt < MAX_RETRIES - 1:
+            await asyncio.sleep(RETRY_COOLDOWN_SECONDS)
+    
+    # 모든 재시도 실패 시 최종 에러 반환
+    logging.error(f"Task #{task_id}: FAILED after {MAX_RETRIES} attempts.")
+    return task_id, {"error": f"Failed after {MAX_RETRIES} attempts."}
 
 async def send_request(
     prompt_list: List[str],
