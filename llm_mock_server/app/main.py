@@ -2,13 +2,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import redis.asyncio as redis
 
-from app.core.logger import get_logger
+from llm_mock_server.app.core.logger import get_logger
 logger = get_logger(__name__)
-from app.api.v1.router import api_router
-from app.core.config import REDIS_HOST, REDIS_PORT, REDIS_DB
-from app.middleware.rate_limiting import RateLimitingMiddleware
-from app.core.config import RPM_LIMIT, TPM_LIMIT, RPD_LIMIT, TPD_LIMIT
-from app.services.rate_limiter import RateLimiter
+from llm_mock_server.app.api.v1.router import api_router
+from config import REDIS_HOST, REDIS_PORT, LLM_REDIS_DB, RPM_LIMIT, TPM_LIMIT, RPD_LIMIT, TPD_LIMIT
+from llm_mock_server.app.middleware.rate_limiting import RateLimitingMiddleware
+from llm_mock_server.app.services.rate_limiter import RateLimiter
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,7 +15,7 @@ async def lifespan(app: FastAPI):
 
     # Redis 클라이언트 생성
     redis_client = redis.from_url(
-        f"redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}",
+        f"redis://{REDIS_HOST}:{REDIS_PORT}/{LLM_REDIS_DB}",
         encoding="utf-8",
         decode_responses=True
     )

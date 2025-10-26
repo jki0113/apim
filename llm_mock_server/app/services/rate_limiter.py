@@ -2,6 +2,10 @@ import time
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 import redis.asyncio as redis
+import config
+print('@' * 100)
+print(config.LLM_RATE_LIMIT_PREFIX)
+print('@' * 100)
 
 class RateLimiter:
     """
@@ -89,10 +93,11 @@ class RateLimiter:
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         
         # Redis 키 정의
-        rpd_key = f"rate_limit:rpd:{today_str}"
-        tpd_key = f"rate_limit:tpd:{today_str}"
-        rpm_key = "rate_limit:rpm_window"
-        tpm_key = "rate_limit:tpm_window"
+        prefix = config.LLM_RATE_LIMIT_PREFIX
+        rpd_key = f"{prefix}:rpd:{today_str}"
+        tpd_key = f"{prefix}:tpd:{today_str}"
+        rpm_key = f"{prefix}:rpm_window"
+        tpm_key = f"{prefix}:tpm_window"
         
         # Lua 스크립트에 전달할 인자들
         args = [

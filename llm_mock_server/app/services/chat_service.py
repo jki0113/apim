@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import AsyncGenerator
 
-from app.models.chat import (
+from llm_mock_server.app.models.chat import (
     ChatMessage,
     ChatCompletionResponse,
     ChatCompletionResponseChoice,
@@ -13,7 +13,7 @@ from app.models.chat import (
     DeltaMessage,
     Usage,
 )
-from app.core.logger import get_logger
+from llm_mock_server.app.core.logger import get_logger
 logger = get_logger(__name__)
 
 async def stream_generator(model: str) -> AsyncGenerator[str, None]:

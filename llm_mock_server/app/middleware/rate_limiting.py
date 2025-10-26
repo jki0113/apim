@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 
-from app.core.logger import get_logger
+from llm_mock_server.app.core.logger import get_logger
 logger = get_logger(__name__)
 
 def count_request_tokens(request_data: dict) -> int:

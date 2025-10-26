@@ -1,8 +1,8 @@
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from app.models.chat import ChatCompletionRequest
-from app.services import chat_service
+from llm_mock_server.app.models.chat import ChatCompletionRequest
+from llm_mock_server.app.services import chat_service
 
 router = APIRouter()
 
