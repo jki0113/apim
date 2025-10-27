@@ -8,10 +8,13 @@ from llm_mock_server.app.core.logger import get_logger
 logger = get_logger(__name__)
 
 def count_request_tokens(request_data: dict) -> int:
-    """(가상) 요청 본문에서 토큰 수를 계산"""
+    """
+    (가상) 요청 본문에서 토큰 수를 계산
+    Output Token의 예상을 포함하며 input 의 3배 정도로 계산
+    """
     try:
         messages = request_data.get("messages", [])
-        return sum(len(msg.get("content", "")) for msg in messages)
+        return sum(len(msg.get("content", "")) for msg in messages) * 3
     except Exception:
         return 0
 
